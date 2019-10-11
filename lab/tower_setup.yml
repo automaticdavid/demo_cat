@@ -1,0 +1,184 @@
+---
+- name: Setup Demo in Tower
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+
+    tower_username: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          33396262663131653034633866363336613262343732666166313364613761633863316566616162
+          6330633738303532346638346665333935623535336239380a333665663732366136386137623062
+          66383335353637333939633039356534373464383764376132626365326133626134653464636362
+          3966363135613536320a643935653562396461623966636630343238656264363262386164343037
+          3934
+    tower_password: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          36343266333332356461623337616430303462656534643534663064383338313234336431333033
+          3336383163353635646466323662643737333862383430610a643461646563643237333834326264
+          66643130666666643639316664383830633734663935316366383832366435623931663530313037
+          6330613936383235310a346562326232373130343964356339383038316333623865336165316433
+          6231
+    tower_hostname: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          64376666356130636563613637633366616533646235666137656432376461633537396132626432
+          6139383164643135346661306435633937656564323362350a393038303232633435396366613935
+          63363039393066393933326562633839616265616533616636333138613562303133656238663564
+          3338353839663435630a386134313163383765323236333636363430326234666562316663326438
+          32643462376137396133373639383931386534323839663735363832356238376130
+
+    aws_access_key: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          32383163663736376436363865633865386561333766303436663235333763643934373034613131
+          3863626264303364616130396235396663663037623564310a653334383333306561643032373034
+          64306562316566326531313261383331636432366165666466356131343239623530653632643963
+          3839623835623062340a346339623433363230623237663133386663613565633235393361653137
+          63386133653635653566616330613231323933393336656634356437343036663335
+
+    aws_secret_key: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          38356434613634383265393963376233643233353566316638633030613735663933376232373536
+          6233363161653466373935326238333539373462363437390a353961363934666662623566663631
+          38653630373030393564363962363661653362363661353137663564626264623936646466363461
+          3765336361333264350a396165306161366635363834663630636134326639363031613465653064
+          31326432636639386134653334353432646461373933343562373536646130333538306365303461
+          3766383037376138313138326561663636366665346236656564
+
+  tasks:
+
+    - name: Create tower organization
+      tower_organization:
+        name: meteor
+        description: "Only the Meteors"
+        state: present
+        tower_username: "{{ tower_username }}"
+        tower_password: "{{ tower_password }}"
+        tower_host: "{{ tower_hostname }}"
+
+    - name: Create AWS Credentials
+      tower_credential:
+        name: ec2
+        organization: meteor
+        kind: aws
+        username: "{{ aws_access_key }}"
+        password: "{{ aws_secret_key }}"
+        tower_username: "{{ tower_username }}"
+        tower_password: "{{ tower_password }}"
+        tower_host: "{{ tower_hostname }}"
+        state: present
+
+    - name: Create ec2 Machine Credentials
+      tower_credential:
+        name: ec2_ssh
+        organization: meteor
+        kind: ssh
+        ssh_key_data: "{{ lookup('file', '~/.ssh/dcl-demo') }}"
+        username: ec2-user
+        tower_username: "{{ tower_username }}"
+        tower_password: "{{ tower_password }}"
+        tower_host: "{{ tower_hostname }}"
+        state: present
+
+    - name: Create Inventory
+      tower_inventory:
+        name: ec2_private
+        organization: meteor
+        tower_username: "{{ tower_username }}"
+        tower_password: "{{ tower_password }}"
+        tower_host: "{{ tower_hostname }}"
+        state: present
+
+    - name: Create Inventory Source
+      tower_inventory_source:
+        name: ec2_private
+        inventory: ec2_private
+        credential: ec2
+        source: ec2
+        source_vars: 
+          vpc_destination_variable: private_ip_address
+        update_on_launch: yes
+        overwrite: yes
+        overwrite_vars: yes
+        tower_username: "{{ tower_username }}"
+        tower_password: "{{ tower_password }}"
+        tower_host: "{{ tower_hostname }}"
+        state: present
+
+    - name: Add Tower Project
+      tower_project:
+          name: ML Cat - AWS (dev)
+          description: Is it Cat ?
+          organization: meteor
+          scm_type: git
+          scm_url: https://github.com/automaticdavid/demo_cat_ec2.git
+          scm_branch: devel
+          scm_delete_on_update: yes
+          tower_username: "{{ tower_username }}"
+          tower_password: "{{ tower_password }}"
+          tower_host: "{{ tower_hostname }}"
+          state: present
+  
+    - name: Create Job Template for Provisioning
+      tower_job_template:
+        name: 'ML Cat - AWS (dev) - Provision'
+        inventory: azure_private
+        project: ML Cat - AWS (dev)
+        job_type: run
+        playbook: stack.yml
+        credential: ec2_ssh
+        extra_vars_path: extra_vars.provision.yml
+        tower_username: "{{ tower_username }}"
+        tower_password: "{{ tower_password }}"
+        tower_host: "{{ tower_hostname }}"
+        state: present
+  
+    - name: Create Job Template for Lab Setup
+      tower_job_template:
+        name: 'ML Cat - AWS (dev) - Lab Setup'
+        inventory: ec2_private
+        project: ML Cat - AWS (dev)
+        job_type: run
+        playbook: lab_setup.yml
+        credential: ec2_ssh
+        tower_username: "{{ tower_username }}"
+        tower_password: "{{ tower_password }}"
+        tower_host: "{{ tower_hostname }}"
+        state: present
+
+    - name: Create Job Template for Lab Teardown
+      tower_job_template:
+        name: 'ML Cat - AWS (dev) - Teardown'
+        inventory: ec2_private
+        project: ML Cat - AWS (dev)
+        job_type: run
+        playbook: lab_delete.yml
+        credential: ec2_ssh
+        tower_username: "{{ tower_username }}"
+        tower_password: "{{ tower_password }}"
+        tower_host: "{{ tower_hostname }}"
+        state: present
+
+    # - name: Additional Tower Settings
+    #   shell: |
+    #     tower-cli config host "{{ tower_hostname }}"
+    #     tower-cli config verify_ssl false
+    #     tower-cli login --password {{ tower_username }} {{ tower_password }}
+    #     tower-cli job_template associate_credential --job-template "ML Cat - Azure (dev) - Provision" --credential "azure"
+    #     tower-cli job_template associate_credential --job-template "ML Cat - Azure (dev) - Lab Setup" --credential "azure"
+    #     tower-cli job_template associate_credential --job-template "ML Cat - Azure (dev) - Teardown" --credential "azure"
+    #     tower-cli job_template associate_ig --job_template "ML Cat - Azure (dev) - Provision" --instance_group "azure"
+    #     tower-cli job_template associate_ig --job_template "ML Cat - Azure (dev) - Lab Setup" --instance_group "azure"
+    #     tower-cli credential_type create -n azure_blob --kind cloud --inputs @blob.inputs.yml --injectors @blob.injectors.yml
+    #     tower-cli credential_type create -n ssh_user --kind cloud --inputs @ssh_user.inputs.yml --injectors @ssh_user.injectors.yml
+    #     tower-cli credential_type create -n rhsm --kind cloud --inputs @rhsm.inputs.yml --injectors @rhsm.injectors.yml
+    #     tower-cli credential create -n cat_blob --credential-type 'azure_blob' --organization meteor --inputs @blob.secrets.yml
+    #     tower-cli credential create -n azure_user --credential-type 'ssh_user' --organization meteor --inputs @azure_user.secrets.yml
+    #     tower-cli credential create -n rhsm --credential-type 'rhsm' --organization meteor --inputs @rhsm.secrets.yml
+    #     tower-cli job_template associate_credential --job-template "ML Cat - Azure (dev) - Provision" --credential "azure_user"
+    #     tower-cli job_template associate_credential --job-template "ML Cat - Azure (dev) - Provision" --credential "cat_blob"
+    #     tower-cli job_template associate_credential --job-template "ML Cat - Azure (dev) - Provision" --credential "rhsm"
+
+
+
+    

@@ -1,0 +1,9 @@
+---
+- name: Delete all ec2 VMs of a given scope
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Include role taks to delete ec2 Lab
+      include_role: 
+        name: ec2
+        tasks_from: ec2_env_destroy
