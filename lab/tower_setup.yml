@@ -107,23 +107,27 @@
 
     - name: Add Tower Project
       tower_project:
-          name: ML Cat - AWS (dev)
+          name: ML Cat - AWS (prod)
           description: Is it Cat ?
           organization: meteor
           scm_type: git
           scm_url: https://github.com/automaticdavid/demo_cat_ec2.git
-          scm_branch: devel
+          scm_branch: master
           scm_delete_on_update: yes
           tower_username: "{{ tower_username }}"
           tower_password: "{{ tower_password }}"
           tower_host: "{{ tower_hostname }}"
           state: present
+
+    - name: Wait for project sync
+      pause: 
+        seconds: 90 
   
     - name: Create Job Template for Provisioning
       tower_job_template:
-        name: 'ML Cat - AWS (dev) - Provision'
+        name: 'ML Cat - AWS (prod) - Provision'
         inventory: azure_private
-        project: ML Cat - AWS (dev)
+        project: ML Cat - AWS (prod)
         job_type: run
         playbook: stack.yml
         credential: ec2_ssh
@@ -135,9 +139,9 @@
   
     - name: Create Job Template for Lab Setup
       tower_job_template:
-        name: 'ML Cat - AWS (dev) - Lab Setup'
+        name: 'ML Cat - AWS (prod) - Lab Setup'
         inventory: ec2_private
-        project: ML Cat - AWS (dev)
+        project: ML Cat - AWS (prod)
         job_type: run
         playbook: lab_setup.yml
         credential: ec2_ssh
@@ -148,9 +152,9 @@
 
     - name: Create Job Template for Lab Teardown
       tower_job_template:
-        name: 'ML Cat - AWS (dev) - Teardown'
+        name: 'ML Cat - AWS (prod) - Teardown'
         inventory: ec2_private
-        project: ML Cat - AWS (dev)
+        project: ML Cat - AWS (prod)
         job_type: run
         playbook: lab_delete.yml
         credential: ec2_ssh
@@ -159,25 +163,25 @@
         tower_host: "{{ tower_hostname }}"
         state: present
 
-    # - name: Additional Tower Settings
-    #   shell: |
-    #     tower-cli config host "{{ tower_hostname }}"
-    #     tower-cli config verify_ssl false
-    #     tower-cli login --password {{ tower_username }} {{ tower_password }}
-    #     tower-cli job_template associate_credential --job-template "ML Cat - Azure (dev) - Provision" --credential "azure"
-    #     tower-cli job_template associate_credential --job-template "ML Cat - Azure (dev) - Lab Setup" --credential "azure"
-    #     tower-cli job_template associate_credential --job-template "ML Cat - Azure (dev) - Teardown" --credential "azure"
-    #     tower-cli job_template associate_ig --job_template "ML Cat - Azure (dev) - Provision" --instance_group "azure"
-    #     tower-cli job_template associate_ig --job_template "ML Cat - Azure (dev) - Lab Setup" --instance_group "azure"
-    #     tower-cli credential_type create -n azure_blob --kind cloud --inputs @blob.inputs.yml --injectors @blob.injectors.yml
-    #     tower-cli credential_type create -n ssh_user --kind cloud --inputs @ssh_user.inputs.yml --injectors @ssh_user.injectors.yml
-    #     tower-cli credential_type create -n rhsm --kind cloud --inputs @rhsm.inputs.yml --injectors @rhsm.injectors.yml
-    #     tower-cli credential create -n cat_blob --credential-type 'azure_blob' --organization meteor --inputs @blob.secrets.yml
-    #     tower-cli credential create -n azure_user --credential-type 'ssh_user' --organization meteor --inputs @azure_user.secrets.yml
-    #     tower-cli credential create -n rhsm --credential-type 'rhsm' --organization meteor --inputs @rhsm.secrets.yml
-    #     tower-cli job_template associate_credential --job-template "ML Cat - Azure (dev) - Provision" --credential "azure_user"
-    #     tower-cli job_template associate_credential --job-template "ML Cat - Azure (dev) - Provision" --credential "cat_blob"
-    #     tower-cli job_template associate_credential --job-template "ML Cat - Azure (dev) - Provision" --credential "rhsm"
+    - name: Additional Tower Settings
+      shell: |
+        tower-cli config host "{{ tower_hostname }}"
+        tower-cli config verify_ssl false
+        tower-cli login --password {{ tower_username }} {{ tower_password }}
+        tower-cli job_template associate_credential --job-template "ML Cat - AWS (prod) - Provision" --credential "ec2"
+        tower-cli job_template associate_credential --job-template "ML Cat - AWS (prod) - Lab Setup" --credential "ec2"
+        tower-cli job_template associate_credential --job-template "ML Cat - AWS (prod) - Teardown" --credential "ec2"
+        tower-cli job_template associate_ig --job_template "ML Cat - AWS (prod) - Provision" --instance_group "aws"
+        tower-cli job_template associate_ig --job_template "ML Cat - AWS (prod) - Lab Setup" --instance_group "aws"
+        # tower-cli credential_type create -n azure_blob --kind cloud --inputs @blob.inputs.yml --injectors @blob.injectors.yml
+        tower-cli credential_type create -n ssh_user --kind cloud --inputs @ssh_user.inputs.yml --injectors @ssh_user.injectors.yml
+        tower-cli credential_type create -n rhsm --kind cloud --inputs @rhsm.inputs.yml --injectors @rhsm.injectors.yml
+        tower-cli credential create -n cat_blob --credential-type 'azure_blob' --organization meteor --inputs @blob.secrets.yml
+        tower-cli credential create -n azure_user --credential-type 'ssh_user' --organization meteor --inputs @azure_user.secrets.yml
+        tower-cli credential create -n rhsm --credential-type 'rhsm' --organization meteor --inputs @rhsm.secrets.yml
+        tower-cli job_template associate_credential --job-template "ML Cat - Azure (dev) - Provision" --credential "azure_user"
+        tower-cli job_template associate_credential --job-template "ML Cat - Azure (dev) - Provision" --credential "cat_blob"
+        tower-cli job_template associate_credential --job-template "ML Cat - Azure (dev) - Provision" --credential "rhsm"
 
 
 
