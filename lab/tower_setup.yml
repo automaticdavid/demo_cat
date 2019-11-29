@@ -50,7 +50,7 @@
         tower_host: "{{ tower_hostname }}"
         state: present
 
-    - name: Create Inventory Source
+    - name: Create Inventory Source for AWS
       tower_inventory_source:
         name: aws_private
         inventory: aws_private
@@ -58,6 +58,34 @@
         source: ec2
         source_vars: 
           vpc_destination_variable: private_ip_address
+        update_on_launch: yes
+        overwrite: yes
+        overwrite_vars: yes
+        tower_username: "{{ tower_username }}"
+        tower_password: "{{ tower_password }}"
+        tower_host: "{{ tower_hostname }}"
+        state: present
+
+    - name: Add Tower Project for fact_store source
+      tower_project:
+          name: fact_store
+          description: Fact Store
+          organization: meteor
+          scm_type: git
+          scm_url: https://github.com/automaticdavid/fact_store.git
+          scm_branch: master
+          scm_delete_on_update: yes
+          tower_username: "{{ tower_username }}"
+          tower_password: "{{ tower_password }}"
+          tower_host: "{{ tower_hostname }}"
+          state: present
+
+    - name: Create Inventory Source for fact_store
+      tower_inventory_source:
+        name: fact_store
+        inventory: aws_private
+        source: project
+        source_project: fact_store
         update_on_launch: yes
         overwrite: yes
         overwrite_vars: yes
