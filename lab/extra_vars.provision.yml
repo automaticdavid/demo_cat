@@ -6,10 +6,8 @@ ec2_size: t2.medium
 ec2_ami: ami-0e12cbde3e77cbb98
 ec2_groupid: sg-06bf8abd04830d9ff
 ec2_key_name: dcl-demo
-ec2_lb_target: green
 ec2_region: eu-west-1
 ec2_subnetid: subnet-087d298c889a52239
 ec2_vpc: vpc-0dfbc7ccf09d77192
 object_store: s3
 results_bucket: dcl-hotdog-results
-frontend_port_range_start: 1230
